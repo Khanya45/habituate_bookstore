@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>SIGN IN</title>
+   <link rel="stylesheet" href="{{url_for('static', filename='/css/styling.css')}}" />
+    <link rel="stylesheet" href="{{url_for('static', filename='/css/sign_in.css')}}" />
+</head>
+<body>
+    <div class="main">
+      <h1>WELCOME TO HABITUATE READING BOOKSTORE</h1>
+    </div>
+    <div class="form">
+      <form action="/user-registration/" method="POST">
+        <h3>REGISTRATION</h3>
+        Name<br />
+        <input type="text" name="name" /><br />
+        Surname<br />
+        <textarea name="surname"></textarea><br />
+        email<br />
+        <input type="text" name="email" /><br />
+        password<br />
+        <input type="text" name="password" /><br />
+        address
+        <input type="text" name="addr" /><br />
+        <input type="submit" value="submit" /><br />
+      </form>
+    </div>
+</body>
+</html>
