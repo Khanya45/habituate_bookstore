@@ -8,7 +8,11 @@
 <body>
     <div class="main"><h1>WELCOME TO HABITUATE READING BOOKSTORE</h1></div>
     <div class="section">
-      <div class="books_container"></div>
+      <div class="books_container">
+          <button onclick="filterCards('All')">All</button>
+          <button onclick="filterCards('non-fiction')">HTML/CSS</button>
+          <button onclick="filterCards('fiction')">Python</button>
+      </div>
     </div>
     <script src="{{url_for('static', filename='/js/bookinfo.js')}}"></script>
 </body>
