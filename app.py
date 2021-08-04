@@ -2,61 +2,8 @@ from flask import Flask, request, jsonify, render_template, url_for
 from flask_jwt import JWT, jwt_required, current_identity
 import hmac, datetime
 import sqlite3
-from tkinter import *
+from flask import redirect
 
-# ==============================================================================================================================================================================
-# root = Tk()
-
-
-# FUNCTION FOR ADDING NEW USER TO THE DATABASE
-# def signup():
-#     with sqlite3.connect('dbHabituate.db') as conn:
-#             mycursor = conn.cursor()
-#             strEncode= edtName.get()[0:3] + edtName.get()[-3:-1] + edtSurname.get()[1:4]
-#             hex_string = strEncode.encode('utf-8')
-#             hex_value = hex_string.hex()
-#             isbn = hex_value
-#             mycursor.execute('INSERT INTO tblBooks (isbn , title, author, image, reviews, price,genre) VALUES(?,?,?,?,?,?,?)', (isbn, edtName.get(), edtSurname.get(), edtMobile.get(), edtreviews.get(), edtprice.get(), edtID.get()))
-#             conn.commit()
-#
-#
-# # ========== VISITOR'S FRAME ===========
-# lbFrame_visitor = LabelFrame(root, text="VISITOR'S DETAILS", width=330, height=400, bg="#141215", fg="white")
-# lbFrame_visitor.place(x=20, y=200)
-#
-# lbName = Label(lbFrame_visitor, text="Book Name", bg="#141215", fg="white")
-# lbName.place(x=10, y=20)
-# edtName = Entry(lbFrame_visitor)
-# edtName.place(x=130, y=20)
-#
-# lbSurname = Label(lbFrame_visitor, text="Author", bg="#141215", fg="white")
-# lbSurname.place(x=10, y=60)
-# edtSurname = Entry(lbFrame_visitor)
-# edtSurname.place(x=130, y=60)
-#
-# lbID = Label(lbFrame_visitor, text="category", bg="#141215", fg="white")
-# lbID.place(x=10, y=100)
-# edtID = Entry(lbFrame_visitor)
-# edtID.place(x=130, y=100)
-#
-# lbreviews = Label(lbFrame_visitor, text="reviews", bg="#141215", fg="white")
-# lbreviews.place(x=10, y=140)
-# edtreviews = Entry(lbFrame_visitor)
-# edtreviews.place(x=130, y=140)
-#
-# lbprice = Label(lbFrame_visitor, text="price", bg="#141215", fg="white")
-# lbprice.place(x=10, y=180)
-# edtprice = Entry(lbFrame_visitor)
-# edtprice.place(x=130, y=180)
-#
-# lbMobile = Label(lbFrame_visitor, text="image", bg="#141215", fg="white")
-# lbMobile.place(x=10, y=220)
-# edtMobile = Entry(lbFrame_visitor)
-# edtMobile.place(x=130, y=220)
-# btnLogin = Button(root, text="SIGN UP", width=10, borderwidth=4, font="Times 15", command=signup, bg="#141215", fg="white")
-# btnLogin.place(x=190, y=530)
-# root.mainloop()
-# ===========================================================================================================================================================================
 
 app = Flask(__name__)
 app.debug = True
@@ -68,7 +15,7 @@ def create_tables():
     print("Opened database successfully")
     # CREATING TABLES
     conn.execute('CREATE TABLE IF NOT EXISTS tblCustomer (customer_id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, surname TEXT, email TEXT)')
-    conn.execute('CREATE TABLE IF NOT EXISTS tblHistory (customer_id INTEGER, isbn TEXT, book_Title TEXT, quantity TEXT,total_price REAL, order_date DATETIME, FOREIGN KEY (customer_id) REFERENCES tblCustomer (customer_id), FOREIGN KEY (isbn) REFERENCES tblBooks (isbn))')
+    conn.execute('CREATE TABLE IF NOT EXISTS tblHistory (transaction_id INTEGER AUTO_INCREMENT PRIMARY KEY, customer_id INTEGER, isbn TEXT, book_Title TEXT, quantity TEXT,total_price REAL, order_date DATETIME, FOREIGN KEY (customer_id) REFERENCES tblCustomer (customer_id), FOREIGN KEY (isbn) REFERENCES tblBooks (isbn))')
     conn.execute('CREATE TABLE IF NOT EXISTS tblUser (user_id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, surname TEXT, password TEXT, username TEXT)')
     conn.execute("CREATE TABLE IF NOT EXISTS tblBooks (isbn TEXT PRIMARY KEY, title TEXT, author TEXT, image TEXT, reviews TEXT, price REAL,genre TEXT)")
     print("Table created successfully")
@@ -366,23 +313,22 @@ def sort_books(sort_by):
 
 # ========================================================= FOR HISTORY TABLE ==========================================================
 
-# ADDING NEW BOOKS ON THE TABLE
-@app.route('/add-transaction/', methods=["POST"])
+# ADDING NEW TRANSACTIONS ON THE TABLE
+@app.route('/add-transaction/<int:customer_id>/<isbn>/', methods=["POST"])
 # @jwt_required()
-def add_transaction():
+def add_transaction(customer_id, isbn):
     response = {}
 
     if request.method == 'POST':
         with sqlite3.connect('dbHabituate.db') as conn:
             cur = conn.cursor()
-            cur.execute('SELECT isbn,title,author,price FROM tblBooks')
+            cur.execute('SELECT isbn,title,price FROM tblBooks WHERE isbn=?', [isbn])
             book_details = cur.fetchall()
-            isbn = ""
             quantity = request.form['quantity']
-            price = request.form['price']
             order_date = datetime.datetime.now()
-            # image = request.form['image']
-            cur.execute('INSERT INTO tblHistory (isbn , title, quantity, price, order_date) VALUES(?,?,?,?,?,?,?)', (book_details[0], book_details[1], quantity, price, order_date))
+            cur.execute('INSERT INTO tblHistory (customer_id, isbn , book_Title, quantity, total_price, order_date) VALUES(?,?,?,?,?,?)', (customer_id, book_details[0][0], book_details[0][1], quantity, book_details[0][2], order_date))
+            # cur.execute('UPDATE tblHistory SET customer_id = 1 WHERE book_Title = "48 laws of power"')
+            # cur.execute('UPDATE tblHistory SET customer_id = 2 WHERE book_Title = "the greatest secret"')
             conn.commit()
             response["status_code"] = 201
             response['description'] = "Book added succesfully"
@@ -442,11 +388,50 @@ def total_profit():
     return jsonify(results)
 
 
-# def image_hosting(image):
-#     with sqlite3.connect("dbHabituate.db") as conn:
+# ADDING THE NEW customer ON THE TABLE
+@app.route('/customer-registration/', methods=["POST"])
+def customer_registration():
+    response = {}
+
+    if request.method == "POST":
+
+        name = request.form['name']
+        surname = request.form['surname']
+        email = request.form['email']
+
+        with sqlite3.connect("dbHabituate.db") as conn:
+            cursor = conn.cursor()
+            cursor.execute("INSERT INTO tblCustomer("
+                           "name,"
+                           "surname,"
+                           "email) VALUES(?, ?, ?)", (name, surname, email))
+            conn.commit()
+            response["message"] = "success"
+            response["status_code"] = 201
+
+        return response
+
+
+# IMAGE HOSTING
+@app.route('/image-hosting/')
+def image_hosting():
+    with sqlite3.connect("dbHabituate.db") as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT image FROM tblBooks WHERE isbn='34382077656f6265'")
+        image = cursor.fetchone()
+        for i in image:
+            image1 = i
+    return redirect(image1)
+
+
+# with sqlite3.connect("dbHabituate.db") as conn:
 #         cursor = conn.cursor()
-#         cursor.execute("SELECT image FROM tblBooks WHERE isbn=", [image])
-#         image = cursor.fetchone()
-#         for i in image:
-#             image1 = i
-#     return url_for(image1)
+#         cursor.execute("UPDATE tblHistory SET transaction_id= (SELECT last_insert_id() FROM tblBooks) WHERE isbn='34382077656f6265'")
+#         id = cursor.fetchone()
+#         print(id)
+
+with sqlite3.connect('dbHabituate.db') as conn:
+            cur = conn.cursor()
+            cur.execute('SELECT * FROM tblHistory')
+            book_details = cur.fetchall()
+            print(book_details)
