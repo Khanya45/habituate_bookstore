@@ -247,7 +247,7 @@ def delete_post(id):
 
 
 # UPDATE A BOOK ROW
-@app.route('/edit-book/isbn>/', methods=["PUT"])
+@app.route('/edit-book/<isbn>/', methods=["PUT"])
 # @jwt_required()
 def edit_book(isbn):
     response = {}
@@ -378,7 +378,11 @@ def add_transaction():
             cur.execute('SELECT isbn,title,author,price FROM tblBooks')
             book_details = cur.fetchall()
             isbn = ""
-            cur.execute('INSERT INTO tblHistory (isbn , title, author, image, reviews, price,genre) VALUES(?,?,?,?,?,?,?)', (book_details[0], book_details[1], quantity, total_price, order_date))
+            quantity = request.form['quantity']
+            price = request.form['price']
+            order_date = datetime.datetime.now()
+            # image = request.form['image']
+            cur.execute('INSERT INTO tblHistory (isbn , title, quantity, price, order_date) VALUES(?,?,?,?,?,?,?)', (book_details[0], book_details[1], quantity, price, order_date))
             conn.commit()
             response["status_code"] = 201
             response['description'] = "Book added succesfully"
@@ -386,22 +390,22 @@ def add_transaction():
 
 
 # DISPLAYING ALL BOOKS
-@app.route('/get-books/', methods=["GET"])
-def get_books():
-    response = {}
-    with sqlite3.connect("dbHabituate.db") as conn:
-        cursor = conn.cursor()
-        cursor.execute("SELECT * FROM tblBooks")
-        posts = cursor.fetchall()
-    response['status_code'] = 200
-    response['data'] = posts
-    return response
+# @app.route('/get-books/', methods=["GET"])
+# def get_books():
+#     response = {}
+#     with sqlite3.connect("dbHabituate.db") as conn:
+#         cursor = conn.cursor()
+#         cursor.execute("SELECT * FROM tblBooks")
+#         posts = cursor.fetchall()
+#     response['status_code'] = 200
+#     response['data'] = posts
+#     return response
 
 
 # DELETE A BOOK
 @app.route("/delete-post/<id>/")
 # @jwt_required()
-def delete_post(id):
+def delete_books(id):
     response = {}
     with sqlite3.connect("dbHabituate.db") as conn:
         cursor = conn.cursor()
@@ -418,15 +422,31 @@ def delete_post(id):
 #     print(results)
 
 
-@app.route("/delete-post/")
-def delete_post():
+# TOTAL PRICE OF A CUSTOMER
+@app.route("/price-calculation/<int:customer_id>")
+def total_price(customer_id):
         with sqlite3.connect("dbHabituate.db") as conn:
             cursor = conn.cursor()
-            cursor.execute('SELECT image FROM tblBooks WHERE author = "robert greene"')
-            image = cursor.fetchone()
-            for i in image:
-                image1 = i
-        return url_for(image1)
+            cursor.execute("SELECT sum(price) AS total_price FROM tblBooks WHERE customer_id=", str(customer_id))
+            total = cursor.fetchone()
+        return jsonify(total)
 
 
+# OVERALL PRICE OF THE BOOKSTORE
+@app.route("/bookstore_profit/")
+def total_profit():
+    with sqlite3.connect("dbHabituate.db") as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT sum(price) AS total_price FROM tblBooks")
+        results = cursor.fetchall()
+    return jsonify(results)
 
+
+# def image_hosting(image):
+#     with sqlite3.connect("dbHabituate.db") as conn:
+#         cursor = conn.cursor()
+#         cursor.execute("SELECT image FROM tblBooks WHERE isbn=", [image])
+#         image = cursor.fetchone()
+#         for i in image:
+#             image1 = i
+#     return url_for(image1)
