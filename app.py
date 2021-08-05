@@ -3,6 +3,9 @@ from flask_jwt import JWT, jwt_required, current_identity
 import hmac, datetime
 import sqlite3
 from flask import redirect
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+import smtplib
 
 
 app = Flask(__name__)
@@ -22,47 +25,53 @@ def create_tables():
     conn.close()
 
 
-create_tables()
+# create_tables()
 
 
 # VALIDATION FOR STRINGS
-def is_string(name,surname):
-    # flag = False
-    if name.isdigit() == False and surname.isdigit() == False:
-        flag = True
-    else:
-        flag = False
+def is_string(*args):
+    for arg in args:
+        if arg.isdigit() == False:
+            flag = True
+        else:
+            flag = False
     return flag
 
 
 # VALIDATION FOR INTEGERS
-def is_number(mobile):
-    # flag = False
-    if mobile.isdigit() == True:
-        flag = True
-    else:
-        flag = False
+def is_number(*args):
+    for arg in args:
+        if arg.isdigit() == True:
+            flag = True
+        else:
+            flag = False
     return flag
 
 
 # VALIDATION FOR LENGTH OF MOBILE
-def length(mobile):
-    # flag = False
-    if len(mobile) == 10:
-        flag = True
-    else:
-        flag = False
+def length(*args):
+    for arg in args:
+        if len(arg) > 0:
+            flag = True
+        else:
+            flag = False
     return flag
 
 
-# VALIDATION FOR LENGTH OF STRINGS
-def string_length(name, surname):
-    flag = False
-    if len(name) != 0 and len(surname) != 0:
-        flag = True
-    else:
-        flag = False
-    return flag
+# if length("hfvkh", "", "") == True and is_number("efv", "2455", "bvtt5") == True:
+#     print('correct')
+# else:
+#     print('incorrect')
+
+
+# FUNCTION TO GET AN EMAIL OF AN ADMIN THAT LAST LOGGED IN
+
+def get_email(customer_id):
+    with sqlite3.connect('dbHabituate.db') as conn:
+        cur = conn.cursor()
+        cur.execute('SELECT email FROM tblCustomer WHERE customer_id=?', customer_id)
+        emails = cur.fetchone()
+    return emails[0]
 
 
 # REGISTRATION PAGE FOR NEW BOOKS
@@ -164,19 +173,23 @@ def user_registration():
         surname = request.form['surname']
         username = request.form['username']
         password = request.form['password']
+        if is_string(name, surname) == True and length(name, surname, username, password) == True:
 
-        with sqlite3.connect("dbHabituate.db") as conn:
-            cursor = conn.cursor()
-            cursor.execute("INSERT INTO tblUser("
-                           "name,"
-                           "surname,"
-                           "username,"
-                           "password) VALUES(?, ?, ?, ?)", (name, surname, username, password))
-            conn.commit()
-            response["message"] = "success"
-            response["status_code"] = 201
+            with sqlite3.connect("dbHabituate.db") as conn:
+                cursor = conn.cursor()
+                cursor.execute("INSERT INTO tblUser("
+                               "name,"
+                               "surname,"
+                               "username,"
+                               "password) VALUES(?, ?, ?, ?)", (name, surname, username, password))
+                conn.commit()
+                response["message"] = "success"
+                response["status_code"] = 201
+        else:
+            response["message"] = "Unsuccessful. Incorrect credencials"
+            response["status_code"] = 400
 
-        return response
+    return response
 
 
 # ADDING NEW BOOKS ON THE TABLE
@@ -197,12 +210,19 @@ def add_new_books():
         price = request.form['price']
         genre = request.form['genre']
 
-        with sqlite3.connect('dbHabituate.db') as conn:
-            cur = conn.cursor()
-            cur.execute('INSERT INTO tblBooks (isbn , title, author, image, reviews, price,genre) VALUES(?,?,?,?,?,?,?)', (isbn, title, author, image, reviews, price, genre))
-            conn.commit()
-            response["status_code"] = 201
-            response['description'] = "Book added succesfully"
+        if is_string(title, reviews, author, genre) == True or length(title, reviews, author, genre, image, price) == True or is_number(price):
+
+            with sqlite3.connect('dbHabituate.db') as conn:
+                cur = conn.cursor()
+                cur.execute('INSERT INTO tblBooks (isbn , title, author, image, reviews, price,genre) VALUES(?,?,?,?,?,?,?)', (isbn, title, author, image, reviews, price, genre))
+                conn.commit()
+                response["status_code"] = 201
+                response['description'] = "Book added succesfully"
+
+        else:
+            response["message"] = "Unsuccessful. Incorrect credencials"
+            response["status_code"] = 400
+
         return response
 
 
@@ -246,64 +266,88 @@ def edit_book(isbn):
             # ===================== UPDATING TITLE =================================
             if incoming_data.get("title") is not None:
                 put_data["title"] = incoming_data.get("title")
-                with sqlite3.connect('dbHabituate.db') as conn:
-                    cursor = conn.cursor()
-                    cursor.execute("UPDATE tblBooks SET title =? WHERE isbn=?", ([put_data["title"]], [isbn]))
-                    cursor.execute("UPDATE tblHistory SET book_Title =? WHERE isbn=?", ([put_data["title"]], [isbn]))
-                    conn.commit()
-                    response['message'] = "Update was successfully"
-                    response['status_code'] = 200
+                if is_number(put_data["title"]) == False:
+                    with sqlite3.connect('dbHabituate.db') as conn:
+                        cursor = conn.cursor()
+                        cursor.execute("UPDATE tblBooks SET title =? WHERE isbn=?", ([put_data["title"]], [isbn]))
+                        cursor.execute("UPDATE tblHistory SET book_Title =? WHERE isbn=?", ([put_data["title"]], [isbn]))
+                        conn.commit()
+                        response['message'] = "Update was successfully"
+                        response['status_code'] = 200
+                else:
+                    response['message'] = "Invalid characters"
+                    response['status_code'] = 400
             # ===================== UPDATING AUTHOR =================================
             if incoming_data.get("author") is not None:
                 put_data['author'] = incoming_data.get('author')
+                if is_string(put_data["author"]) == True or length(put_data["author"]) == True:
 
-                with sqlite3.connect('dbHabituate.db') as conn:
-                    cursor = conn.cursor()
-                    cursor.execute("UPDATE tblBooks SET author =? WHERE isbn=?", (put_data["author"], isbn))
-                    conn.commit()
+                    with sqlite3.connect('dbHabituate.db') as conn:
+                        cursor = conn.cursor()
+                        cursor.execute("UPDATE tblBooks SET author =? WHERE isbn=?", (put_data["author"], isbn))
+                        conn.commit()
 
-                    response["content"] = "author updated successfully"
-                    response["status_code"] = 200
+                        response["content"] = "author updated successfully"
+                        response["status_code"] = 200
+                else:
+                    response['message'] = "Invalid characters"
+                    response['status_code'] = 400
             # ===================== UPDATING IMAGE =================================
             if incoming_data.get("image") is not None:
                 put_data["image"] = incoming_data.get("image")
-                with sqlite3.connect('dbHabituate.db') as conn:
-                    cursor = conn.cursor()
-                    cursor.execute("UPDATE tblBooks SET image =? WHERE isbn=?", (put_data["image"], isbn))
-                    conn.commit()
-                    response['message'] = "Update was successfully"
-                    response['status_code'] = 200
+                if length(put_data["image"]) == True:
+                    with sqlite3.connect('dbHabituate.db') as conn:
+                        cursor = conn.cursor()
+                        cursor.execute("UPDATE tblBooks SET image =? WHERE isbn=?", (put_data["image"], isbn))
+                        conn.commit()
+                        response['message'] = "Update was successfully"
+                        response['status_code'] = 200
+                else:
+                    response['message'] = "Invalid characters"
+                    response['status_code'] = 400
             # ===================== UPDATING REVIEWS =================================
             if incoming_data.get("reviews") is not None:
                 put_data['reviews'] = incoming_data.get('reviews')
+                if length(put_data["reviews"]) == True:
 
-                with sqlite3.connect('dbHabituate.db') as conn:
-                    cursor = conn.cursor()
-                    cursor.execute("UPDATE tblBooks SET reviews =? WHERE isbn=?", (put_data["reviews"], isbn))
-                    conn.commit()
+                    with sqlite3.connect('dbHabituate.db') as conn:
+                        cursor = conn.cursor()
+                        cursor.execute("UPDATE tblBooks SET reviews =? WHERE isbn=?", (put_data["reviews"], isbn))
+                        conn.commit()
 
-                    response["content"] = "Content updated successfully"
-                    response["status_code"] = 200
+                        response["content"] = "Content updated successfully"
+                        response["status_code"] = 200
+                else:
+                    response['message'] = "Invalid characters"
+                    response['status_code'] = 400
             # ===================== UPDATING PRICE =================================
             if incoming_data.get("price") is not None:
                 put_data["price"] = incoming_data.get("price")
-                with sqlite3.connect('dbHabituate.db') as conn:
-                    cursor = conn.cursor()
-                    cursor.execute("UPDATE tblBooks SET price =? WHERE isbn=?", (put_data["price"], isbn))
-                    conn.commit()
-                    response['message'] = "Update was successfully"
-                    response['status_code'] = 200
+                if is_number(put_data["price"]) == True:
+                    with sqlite3.connect('dbHabituate.db') as conn:
+                        cursor = conn.cursor()
+                        cursor.execute("UPDATE tblBooks SET price =? WHERE isbn=?", (put_data["price"], isbn))
+                        conn.commit()
+                        response['message'] = "Update was successfully"
+                        response['status_code'] = 200
+                else:
+                    response['message'] = "Invalid characters"
+                    response['status_code'] = 400
             # ===================== UPDATING GENRE =================================
             if incoming_data.get("genre") is not None:
                 put_data['genre'] = incoming_data.get('genre')
+                if is_string(put_data['genre']) == True:
 
-                with sqlite3.connect('dbHabituate.db') as conn:
-                    cursor = conn.cursor()
-                    cursor.execute("UPDATE tblBooks SET genre =? WHERE id=?", (put_data["genre"], isbn))
-                    conn.commit()
+                    with sqlite3.connect('dbHabituate.db') as conn:
+                        cursor = conn.cursor()
+                        cursor.execute("UPDATE tblBooks SET genre =? WHERE id=?", (put_data["genre"], isbn))
+                        conn.commit()
 
-                    response["content"] = "Content updated successfully"
-                    response["status_code"] = 200
+                        response["content"] = "Content updated successfully"
+                        response["status_code"] = 200
+                else:
+                    response['message'] = "Invalid characters"
+                    response['status_code'] = 400
     return response
 
 
@@ -362,18 +406,23 @@ def add_transaction(customer_id, isbn):
     response = {}
 
     if request.method == 'POST':
+
         with sqlite3.connect('dbHabituate.db') as conn:
             cur = conn.cursor()
             cur.execute('SELECT isbn,title,price FROM tblBooks WHERE isbn=?', [isbn])
             book_details = cur.fetchall()
             quantity = request.form['quantity']
             order_date = datetime.datetime.now()
-            cur.execute('INSERT INTO tblHistory (customer_id, isbn , book_Title, quantity, total_price, order_date) VALUES(?,?,?,?,?,?)', (customer_id, book_details[0][0], book_details[0][1], quantity, book_details[0][2], order_date))
-            # cur.execute('UPDATE tblHistory SET customer_id = 1 WHERE book_Title = "48 laws of power"')
-            # cur.execute('UPDATE tblHistory SET customer_id = 2 WHERE book_Title = "the greatest secret"')
-            conn.commit()
-            response["status_code"] = 201
-            response['description'] = "Book added succesfully"
+            if is_number(quantity) == True:
+                cur.execute('INSERT INTO tblHistory (customer_id, isbn , book_Title, quantity, total_price, order_date) VALUES(?,?,?,?,?,?)', (customer_id, book_details[0][0], book_details[0][1], quantity, book_details[0][2], order_date))
+                # cur.execute('UPDATE tblHistory SET customer_id = 1 WHERE book_Title = "48 laws of power"')
+                # cur.execute('UPDATE tblHistory SET customer_id = 2 WHERE book_Title = "the greatest secret"')
+                conn.commit()
+                response["status_code"] = 201
+                response['description'] = "Book added succesfully"
+            else:
+                    response['message'] = "Invalid characters"
+                    response['status_code'] = 400
         return response
 
 
@@ -403,6 +452,19 @@ def delete_books(id):
         response['message'] = "blog post deleted successfully."
     return response
 
+
+@app.route("/delete-user/<id>/")
+@jwt_required()
+def delete_user(id):
+    response = {}
+    with sqlite3.connect("dbHabituate.db") as conn:
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM tblUser WHERE user_id=?", [id])
+        conn.commit()
+        response['status_code'] = 200
+        response['message'] = "blog post deleted successfully."
+    return response
+
 # with sqlite3.connect("dbHabituate.db") as conn:
 #     cursor = conn.cursor()
 #     cursor.execute("SELECT * FROM tblBooks")
@@ -425,7 +487,7 @@ def total_price(customer_id):
 def total_profit():
     with sqlite3.connect("dbHabituate.db") as conn:
         cursor = conn.cursor()
-        cursor.execute("SELECT sum(price) AS total_price FROM tblBooks")
+        cursor.execute("SELECT sum(total_price) AS profit FROM tblHistory")
         results = cursor.fetchall()
     return jsonify(results)
 
@@ -440,16 +502,20 @@ def customer_registration():
         name = request.form['name']
         surname = request.form['surname']
         email = request.form['email']
+        if is_string(name, surname) == True or length(name, surname, email) == True:
 
-        with sqlite3.connect("dbHabituate.db") as conn:
-            cursor = conn.cursor()
-            cursor.execute("INSERT INTO tblCustomer("
-                           "name,"
-                           "surname,"
-                           "email) VALUES(?, ?, ?)", (name, surname, email))
-            conn.commit()
-            response["message"] = "success"
-            response["status_code"] = 201
+            with sqlite3.connect("dbHabituate.db") as conn:
+                cursor = conn.cursor()
+                cursor.execute("INSERT INTO tblCustomer("
+                               "name,"
+                               "surname,"
+                               "email) VALUES(?, ?, ?)", (name, surname, email))
+                conn.commit()
+                response["message"] = "success"
+                response["status_code"] = 201
+        else:
+                    response['message'] = "Invalid characters"
+                    response['status_code'] = 400
 
         return response
 
@@ -492,6 +558,39 @@ def image_hosting():
         for i in image:
             image1 = i
     return redirect(image1)
+
+
+#  =================SENDING EMAIL TO THE ADMIN============
+@app.route('/send-email/', methods=['POST'])
+def send_email():
+    response = {}
+    if request.method == "POST":
+        email = request.form['email']
+        try:
+            sender_email_id = 'lottowinners957@gmail.com'
+            receiver_email_id = email
+            password = "GETRICHWITHLOTTO"
+            subject = "Profit for Habituate Reading Bookstore"
+            msg = MIMEMultipart()
+            msg['From'] = sender_email_id
+            msg['To'] = receiver_email_id
+            msg['Subject'] = subject
+            with sqlite3.connect("dbHabituate.db") as conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT sum(total_price) AS profit FROM tblHistory")
+                results = cursor.fetchone()
+            body = f'Dear Admin\n \n This is the total profit we made today on {datetime.date.today()}:\n {results[0]}'
+            msg.attach(MIMEText(body, 'plain'))
+            text = msg.as_string()
+            s = smtplib.SMTP('smtp.gmail.com', 587)
+            s.starttls()
+            s.login(sender_email_id, password)
+            s.sendmail(sender_email_id, receiver_email_id, text)
+            s.quit()
+            response['message'] = "Successfully sent an email"
+        except:
+            response['message'] = "Invalid email"
+        return response
 
 
 # with sqlite3.connect("dbHabituate.db") as conn:
