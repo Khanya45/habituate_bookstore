@@ -15,14 +15,54 @@ def create_tables():
     print("Opened database successfully")
     # CREATING TABLES
     conn.execute('CREATE TABLE IF NOT EXISTS tblCustomer (customer_id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, surname TEXT, email TEXT)')
-    conn.execute('CREATE TABLE IF NOT EXISTS tblHistory (transaction_id INTEGER AUTO_INCREMENT PRIMARY KEY, customer_id INTEGER, isbn TEXT, book_Title TEXT, quantity TEXT,total_price REAL, order_date DATETIME, FOREIGN KEY (customer_id) REFERENCES tblCustomer (customer_id), FOREIGN KEY (isbn) REFERENCES tblBooks (isbn))')
+    conn.execute('CREATE TABLE IF NOT EXISTS tblHistory (transaction_id INTEGER PRIMARY KEY AUTOINCREMENT, customer_id INTEGER, isbn TEXT, book_Title TEXT, quantity TEXT,total_price REAL, order_date DATETIME, FOREIGN KEY (customer_id) REFERENCES tblCustomer (customer_id), FOREIGN KEY (isbn) REFERENCES tblBooks (isbn))')
     conn.execute('CREATE TABLE IF NOT EXISTS tblUser (user_id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, surname TEXT, password TEXT, username TEXT)')
     conn.execute("CREATE TABLE IF NOT EXISTS tblBooks (isbn TEXT PRIMARY KEY, title TEXT, author TEXT, image TEXT, reviews TEXT, price REAL,genre TEXT)")
     print("Table created successfully")
     conn.close()
 
 
-# create_tables()
+create_tables()
+
+
+# VALIDATION FOR STRINGS
+def is_string(name,surname):
+    # flag = False
+    if name.isdigit() == False and surname.isdigit() == False:
+        flag = True
+    else:
+        flag = False
+    return flag
+
+
+# VALIDATION FOR INTEGERS
+def is_number(mobile):
+    # flag = False
+    if mobile.isdigit() == True:
+        flag = True
+    else:
+        flag = False
+    return flag
+
+
+# VALIDATION FOR LENGTH OF MOBILE
+def length(mobile):
+    # flag = False
+    if len(mobile) == 10:
+        flag = True
+    else:
+        flag = False
+    return flag
+
+
+# VALIDATION FOR LENGTH OF STRINGS
+def string_length(name, surname):
+    flag = False
+    if len(name) != 0 and len(surname) != 0:
+        flag = True
+    else:
+        flag = False
+    return flag
 
 
 # REGISTRATION PAGE FOR NEW BOOKS
@@ -141,7 +181,7 @@ def user_registration():
 
 # ADDING NEW BOOKS ON THE TABLE
 @app.route('/add-new-books/', methods=["POST"])
-# @jwt_required()
+@jwt_required()
 def add_new_books():
     response = {}
 
@@ -181,7 +221,7 @@ def get_books():
 
 # DELETE A BOOK
 @app.route("/delete-post/<id>/")
-# @jwt_required()
+@jwt_required()
 def delete_post(id):
     response = {}
     with sqlite3.connect("dbHabituate.db") as conn:
@@ -195,7 +235,7 @@ def delete_post(id):
 
 # UPDATE A BOOK ROW
 @app.route('/edit-book/<isbn>/', methods=["PUT"])
-# @jwt_required()
+@jwt_required()
 def edit_book(isbn):
     response = {}
 
@@ -208,7 +248,8 @@ def edit_book(isbn):
                 put_data["title"] = incoming_data.get("title")
                 with sqlite3.connect('dbHabituate.db') as conn:
                     cursor = conn.cursor()
-                    cursor.execute("UPDATE tblBooks SET title =? WHERE id=?", ([put_data["title"]], [isbn]))
+                    cursor.execute("UPDATE tblBooks SET title =? WHERE isbn=?", ([put_data["title"]], [isbn]))
+                    cursor.execute("UPDATE tblHistory SET book_Title =? WHERE isbn=?", ([put_data["title"]], [isbn]))
                     conn.commit()
                     response['message'] = "Update was successfully"
                     response['status_code'] = 200
@@ -218,7 +259,7 @@ def edit_book(isbn):
 
                 with sqlite3.connect('dbHabituate.db') as conn:
                     cursor = conn.cursor()
-                    cursor.execute("UPDATE tblBooks SET author =? WHERE id=?", (put_data["author"], isbn))
+                    cursor.execute("UPDATE tblBooks SET author =? WHERE isbn=?", (put_data["author"], isbn))
                     conn.commit()
 
                     response["content"] = "author updated successfully"
@@ -228,7 +269,7 @@ def edit_book(isbn):
                 put_data["image"] = incoming_data.get("image")
                 with sqlite3.connect('dbHabituate.db') as conn:
                     cursor = conn.cursor()
-                    cursor.execute("UPDATE tblBooks SET image =? WHERE id=?", (put_data["image"], isbn))
+                    cursor.execute("UPDATE tblBooks SET image =? WHERE isbn=?", (put_data["image"], isbn))
                     conn.commit()
                     response['message'] = "Update was successfully"
                     response['status_code'] = 200
@@ -238,7 +279,7 @@ def edit_book(isbn):
 
                 with sqlite3.connect('dbHabituate.db') as conn:
                     cursor = conn.cursor()
-                    cursor.execute("UPDATE tblBooks SET reviews =? WHERE id=?", (put_data["reviews"], isbn))
+                    cursor.execute("UPDATE tblBooks SET reviews =? WHERE isbn=?", (put_data["reviews"], isbn))
                     conn.commit()
 
                     response["content"] = "Content updated successfully"
@@ -248,7 +289,7 @@ def edit_book(isbn):
                 put_data["price"] = incoming_data.get("price")
                 with sqlite3.connect('dbHabituate.db') as conn:
                     cursor = conn.cursor()
-                    cursor.execute("UPDATE tblBooks SET price =? WHERE id=?", (put_data["price"], isbn))
+                    cursor.execute("UPDATE tblBooks SET price =? WHERE isbn=?", (put_data["price"], isbn))
                     conn.commit()
                     response['message'] = "Update was successfully"
                     response['status_code'] = 200
@@ -268,6 +309,7 @@ def edit_book(isbn):
 
 # DISPLAYING ALL USERS
 @app.route('/get-user/<int:id>/', methods=["GET"])
+@jwt_required()
 def get_user(id):
     response = {}
 
@@ -315,7 +357,7 @@ def sort_books(sort_by):
 
 # ADDING NEW TRANSACTIONS ON THE TABLE
 @app.route('/add-transaction/<int:customer_id>/<isbn>/', methods=["POST"])
-# @jwt_required()
+@jwt_required()
 def add_transaction(customer_id, isbn):
     response = {}
 
@@ -350,7 +392,7 @@ def add_transaction(customer_id, isbn):
 
 # DELETE A BOOK
 @app.route("/delete-post/<id>/")
-# @jwt_required()
+@jwt_required()
 def delete_books(id):
     response = {}
     with sqlite3.connect("dbHabituate.db") as conn:
@@ -412,6 +454,34 @@ def customer_registration():
         return response
 
 
+# DISPLAYING ALL BOOKS
+@app.route('/get-customers/', methods=["GET"])
+@jwt_required()
+def get_customers():
+    response = {}
+    with sqlite3.connect("dbHabituate.db") as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM tblCustomer")
+        customers = cursor.fetchall()
+    response['status_code'] = 200
+    response['data'] = customers
+    return response
+
+
+# DISPLAYING ALL transactions
+@app.route('/get-all-transactions/', methods=["GET"])
+@jwt_required()
+def get_transactions():
+    response = {}
+    with sqlite3.connect("dbHabituate.db") as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM tblHistory")
+        transactions = cursor.fetchall()
+    response['status_code'] = 200
+    response['data'] = transactions
+    return response
+
+
 # IMAGE HOSTING
 @app.route('/image-hosting/')
 def image_hosting():
@@ -426,12 +496,13 @@ def image_hosting():
 
 # with sqlite3.connect("dbHabituate.db") as conn:
 #         cursor = conn.cursor()
-#         cursor.execute("UPDATE tblHistory SET transaction_id= (SELECT last_insert_id() FROM tblBooks) WHERE isbn='34382077656f6265'")
+#         cursor.execute("SELECT * FROM tblHistory")
 #         id = cursor.fetchone()
 #         print(id)
 
-with sqlite3.connect('dbHabituate.db') as conn:
-            cur = conn.cursor()
-            cur.execute('SELECT * FROM tblHistory')
-            book_details = cur.fetchall()
-            print(book_details)
+# with sqlite3.connect('dbHabituate.db') as conn:
+#             cur = conn.cursor()
+#             cur.execute('SELECT (quantity * (SELECT price FROM tblBooks WHERE tblBooks.isbn = tblHistory.isbn)) FROM tblHistory WHERE customer_id=3')
+# # #             # conn.commit()
+#             book_details = cur.fetchall()
+#             print(book_details)
