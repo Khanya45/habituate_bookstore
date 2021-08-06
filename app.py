@@ -75,8 +75,8 @@ def get_email(customer_id):
 
 
 # REGISTRATION PAGE FOR NEW BOOKS
-@app.route('/enter-new/')
-def enter_new_student():
+@app.route('/enter-new-books/')
+def enter_new_books():
     return render_template('addNewBook.html')
 
 
@@ -306,7 +306,7 @@ def get_books():
 # DELETE A BOOK
 @app.route("/delete-post/<id>/")
 @jwt_required()
-def delete_post(id):
+def delete_book(id):
     response = {}
     with sqlite3.connect("dbHabituate.db") as conn:
         cursor = conn.cursor()
@@ -511,18 +511,19 @@ def delete_user(id):
 
 
 # TOTAL PRICE OF A CUSTOMER
-@app.route("/price-calculation/<int:customer_id>")
+@app.route("/price-calculation/<int:customer_id>/")
 def total_price(customer_id):
-        with sqlite3.connect("dbHabituate.db") as conn:
-            cursor = conn.cursor()
-            cursor.execute("SELECT sum(price) AS total_price FROM tblBooks WHERE customer_id=", str(customer_id))
-            total = cursor.fetchone()
-        return jsonify(total)
+    with sqlite3.connect("dbHabituate.db") as conn:
+        cursor = conn.cursor()
+        cursor.execute('UPDATE tblHistory SET total_price=(quantity * (SELECT price FROM tblBooks WHERE tblBooks.isbn = tblHistory.isbn)) WHERE customer_id=3')
+        cursor.execute("SELECT sum(total_price) AS total_price FROM tblHistory WHERE customer_id=?", str(customer_id))
+        total = cursor.fetchone()
+    return jsonify(total)
 
 
 # OVERALL PRICE OF THE BOOKSTORE
 @app.route("/bookstore_profit/")
-def total_profit():
+def bookstore_income():
     with sqlite3.connect("dbHabituate.db") as conn:
         cursor = conn.cursor()
         cursor.execute("SELECT sum(total_price) AS profit FROM tblHistory")
@@ -609,9 +610,13 @@ def send_email():
 #         id = cursor.fetchone()
 #         print(id)
 
+#
 # with sqlite3.connect('dbHabituate.db') as conn:
 #             cur = conn.cursor()
-#             cur.execute('SELECT (quantity * (SELECT price FROM tblBooks WHERE tblBooks.isbn = tblHistory.isbn)) FROM tblHistory WHERE customer_id=3')
-# # #             # conn.commit()
+#             cur.execute('UPDATE tblHistory SET total_price=(quantity * (SELECT total_price FROM tblBooks WHERE tblBooks.isbn = tblHistory.isbn)) WHERE customer_id=3')
+#             conn.commit()
+#             cur.execute('SELECT * FROM tblHistory')
 #             book_details = cur.fetchall()
 #             print(book_details)
+
+
