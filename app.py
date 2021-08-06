@@ -162,18 +162,16 @@ def protected():
     return '%s' % current_identity
 
 
-# ADDING THE NEW ADMIN ON THE TABLE
-@app.route('/user-registration/', methods=["POST"])
-def user_registration():
-    response = {}
+class clsUser:
+    def __init__(self, name, surname, username, password):
+        self.name = name
+        self.surname = surname
+        self.username = username
+        self.password = password
+        # self.email = email
 
-    if request.method == "POST":
 
-        name = request.form['name']
-        surname = request.form['surname']
-        username = request.form['username']
-        password = request.form['password']
-        if is_string(name, surname) == True and length(name, surname, username, password) == True:
+    def user_registration(self):
 
             with sqlite3.connect("dbHabituate.db") as conn:
                 cursor = conn.cursor()
@@ -181,15 +179,85 @@ def user_registration():
                                "name,"
                                "surname,"
                                "username,"
-                               "password) VALUES(?, ?, ?, ?)", (name, surname, username, password))
+                               "password) VALUES(?, ?, ?, ?)", (self.name, self.surname, self.username, self.password))
                 conn.commit()
-                response["message"] = "success"
-                response["status_code"] = 201
-        else:
-            response["message"] = "Unsuccessful. Incorrect credencials"
-            response["status_code"] = 400
 
-    return response
+
+@app.route('/user-registration/', methods=["POST"])
+def user_register():
+    response = {}
+    if request.method == "POST":
+        name = request.form['name']
+        surname = request.form['surname']
+        username = request.form['username']
+        password = request.form['password']
+        if is_string(name, surname) == True and length(name, surname, username, password) == True:
+
+            objUser = clsUser(name, surname, username, password)
+            objUser.user_registration()
+            response["message"] = "success"
+            response["status_code"] = 201
+        else:
+            response["message"] = "Unsuccessful. Incorrect credentials"
+            response["status_code"] = 400
+        return response
+
+
+class clsCustomer:
+    def __init__(self, name, surname, email):
+        self.name = name
+        self.surname = surname
+        self.email = email
+
+
+    def customer_registration(self):
+
+        with sqlite3.connect("dbHabituate.db") as conn:
+            cursor = conn.cursor()
+            cursor.execute("INSERT INTO tblCustomer("
+                           "name,"
+                           "surname,"
+                           "email) VALUES(?, ?, ?)", (self.name, self.surname, self.email))
+            conn.commit()
+
+
+# ADDING THE NEW customer ON THE TABLE
+@app.route('/customer-registration/', methods=["POST"])
+@jwt_required()
+def customer_registration():
+    response = {}
+    if request.method == "POST":
+        name = request.form['name']
+        surname = request.form['surname']
+        email = request.form['email']
+        if is_string(name, surname) == True or length(name, surname, email) == True:
+            objCustomer = clsCustomer(name, surname, email)
+            objCustomer.customer_registration()
+            response["message"] = "customer successfully added"
+            response["status_code"] = 201
+        else:
+            response['message'] = "Invalid characters"
+            response['status_code'] = 400
+
+        return response
+
+
+class clsBooks:
+    def __init__(self, isbn, title, author, image, reviews, price, genre):
+        self.isbn = isbn
+        self.title = title
+        self.author = author
+        self.image = image
+        self.reviews = reviews
+        self.price = price
+        self.genre = genre
+
+
+    def add_new_books(self):
+            with sqlite3.connect('dbHabituate.db') as conn:
+                cur = conn.cursor()
+                cur.execute('INSERT INTO tblBooks (isbn , title, author, image, reviews, price,genre) VALUES(?,?,?,?,?,?,?)', (self.isbn, self.title, self.author, self.image, self.reviews, self.price, self.genre))
+                conn.commit()
 
 
 # ADDING NEW BOOKS ON THE TABLE
@@ -209,18 +277,14 @@ def add_new_books():
         isbn = hex_value
         price = request.form['price']
         genre = request.form['genre']
-
         if is_string(title, reviews, author, genre) == True or length(title, reviews, author, genre, image, price) == True or is_number(price):
-
-            with sqlite3.connect('dbHabituate.db') as conn:
-                cur = conn.cursor()
-                cur.execute('INSERT INTO tblBooks (isbn , title, author, image, reviews, price,genre) VALUES(?,?,?,?,?,?,?)', (isbn, title, author, image, reviews, price, genre))
-                conn.commit()
-                response["status_code"] = 201
-                response['description'] = "Book added succesfully"
+            objBooks = clsBooks(isbn, title, author, image, reviews, price, genre)
+            objBooks.add_new_books()
+            response["status_code"] = 201
+            response['description'] = "Book added succesfully"
 
         else:
-            response["message"] = "Unsuccessful. Incorrect credencials"
+            response["message"] = "Unsuccessful. Incorrect credentials"
             response["status_code"] = 400
 
         return response
@@ -399,32 +463,6 @@ def sort_books(sort_by):
 
 # ========================================================= FOR HISTORY TABLE ==========================================================
 
-# ADDING NEW TRANSACTIONS ON THE TABLE
-@app.route('/add-transaction/<int:customer_id>/<isbn>/', methods=["POST"])
-@jwt_required()
-def add_transaction(customer_id, isbn):
-    response = {}
-
-    if request.method == 'POST':
-
-        with sqlite3.connect('dbHabituate.db') as conn:
-            cur = conn.cursor()
-            cur.execute('SELECT isbn,title,price FROM tblBooks WHERE isbn=?', [isbn])
-            book_details = cur.fetchall()
-            quantity = request.form['quantity']
-            order_date = datetime.datetime.now()
-            if is_number(quantity) == True:
-                cur.execute('INSERT INTO tblHistory (customer_id, isbn , book_Title, quantity, total_price, order_date) VALUES(?,?,?,?,?,?)', (customer_id, book_details[0][0], book_details[0][1], quantity, book_details[0][2], order_date))
-                # cur.execute('UPDATE tblHistory SET customer_id = 1 WHERE book_Title = "48 laws of power"')
-                # cur.execute('UPDATE tblHistory SET customer_id = 2 WHERE book_Title = "the greatest secret"')
-                conn.commit()
-                response["status_code"] = 201
-                response['description'] = "Book added succesfully"
-            else:
-                    response['message'] = "Invalid characters"
-                    response['status_code'] = 400
-        return response
-
 
 # DISPLAYING ALL BOOKS
 # @app.route('/get-books/', methods=["GET"])
@@ -490,34 +528,6 @@ def total_profit():
         cursor.execute("SELECT sum(total_price) AS profit FROM tblHistory")
         results = cursor.fetchall()
     return jsonify(results)
-
-
-# ADDING THE NEW customer ON THE TABLE
-@app.route('/customer-registration/', methods=["POST"])
-def customer_registration():
-    response = {}
-
-    if request.method == "POST":
-
-        name = request.form['name']
-        surname = request.form['surname']
-        email = request.form['email']
-        if is_string(name, surname) == True or length(name, surname, email) == True:
-
-            with sqlite3.connect("dbHabituate.db") as conn:
-                cursor = conn.cursor()
-                cursor.execute("INSERT INTO tblCustomer("
-                               "name,"
-                               "surname,"
-                               "email) VALUES(?, ?, ?)", (name, surname, email))
-                conn.commit()
-                response["message"] = "success"
-                response["status_code"] = 201
-        else:
-                    response['message'] = "Invalid characters"
-                    response['status_code'] = 400
-
-        return response
 
 
 # DISPLAYING ALL BOOKS
