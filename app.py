@@ -6,10 +6,12 @@ from flask import redirect
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import smtplib
+from flask_cors import CORS
 
 
 app = Flask(__name__)
 app.debug = True
+CORS(app)
 
 
 def create_tables():
