@@ -189,10 +189,10 @@ class clsUser:
 def user_register():
     response = {}
     if request.method == "POST":
-        name = request.form['name']
-        surname = request.form['surname']
-        username = request.form['username']
-        password = request.form['password']
+        name = request.json['name']
+        surname = request.json['surname']
+        username = request.json['username']
+        password = request.json['password']
         if is_string(name, surname) == True and length(name, surname, username, password) == True:
 
             objUser = clsUser(name, surname, username, password)
@@ -229,9 +229,9 @@ class clsCustomer:
 def customer_registration():
     response = {}
     if request.method == "POST":
-        name = request.form['name']
-        surname = request.form['surname']
-        email = request.form['email']
+        name = request.json['name']
+        surname = request.json['surname']
+        email = request.json['email']
         if is_string(name, surname) == True or length(name, surname, email) == True:
             objCustomer = clsCustomer(name, surname, email)
             objCustomer.customer_registration()
@@ -269,16 +269,16 @@ def add_new_books():
     response = {}
 
     if request.method == 'POST':
-        title = request.form['title']
-        reviews = request.form['reviews']
-        author = request.form['author']
-        image = request.form['image']
+        title = request.json['title']
+        reviews = request.json['reviews']
+        author = request.json['author']
+        image = request.json['image']
         strEncode = title[0:3] + title[-3:-1] + author[1:4]
         hex_string = strEncode.encode('utf-8')
         hex_value = hex_string.hex()
         isbn = hex_value
-        price = request.form['price']
-        genre = request.form['genre']
+        price = request.json['price']
+        genre = request.json['genre']
         if is_string(title, reviews, author, genre) == True or length(title, reviews, author, genre, image, price) == True or is_number(price):
             objBooks = clsBooks(isbn, title, author, image, reviews, price, genre)
             objBooks.add_new_books()
@@ -578,7 +578,7 @@ def image_hosting():
 def send_email():
     response = {}
     if request.method == "POST":
-        email = request.form['email']
+        email = request.json['email']
         try:
             sender_email_id = 'lottowinners957@gmail.com'
             receiver_email_id = email
