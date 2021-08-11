@@ -621,4 +621,6 @@ def send_email():
 #             book_details = cur.fetchall()
 #             print(book_details)
 
-
+if __name__ == "__main__":
+    app.run()
+    app.debug = True
